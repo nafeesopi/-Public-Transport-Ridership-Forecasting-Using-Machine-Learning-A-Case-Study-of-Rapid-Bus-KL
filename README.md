@@ -1,0 +1,2 @@
+# -Public-Transport-Ridership-Forecasting-Using-Machine-Learning-A-Case-Study-of-Rapid-Bus-KL
+This study analyzes how weather conditions, festivals, and holidays impact Rapid Bus KL ridership. Using machine learning models (Linear Regression, ARIMA, Random Forest, XGBoost), it finds Random Forest best captures the complex ridership patterns, highlighting the role of weekday/weekend status, temperature, and events.
