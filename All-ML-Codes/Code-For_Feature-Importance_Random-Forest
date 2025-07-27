@@ -1,0 +1,97 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.inspection import permutation_importance
+import matplotlib.pyplot as plt
+from docx import Document
+
+# Load your dataset
+data = pd.read_csv(r'E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv')
+
+# Target variable
+target_column_name = 'Bus_rkl_ridership'
+
+# Convert 'Date' column to datetime and drop it if not needed
+data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+data.drop(columns=['Date'], inplace=True)
+
+# Add Weekday/Weekend feature back in the dataset (assuming it's in the original dataset)
+# Remove other low importance features as before
+columns_to_remove = [
+    'ridership_rolling_7', 'ridership_diff_7', 'month', 
+    'ridership_seasonal_lag_30', 'quarter', 'Temp_avg', 'Temp_min', 'Day_Saturday', 
+    'Day_Sunday', 'Day_Wednesday', 'Day_Monday', 'Conditions', 'Day_Tuesday', 
+    'Day_Friday', 'Day_Thursday'
+]
+data = data.drop(columns=columns_to_remove)
+
+# One-hot encoding for categorical features including Weekday/Weekend
+data = pd.get_dummies(data, drop_first=True)
+
+# Check for NaN values and handle them
+data.fillna(data.mean(), inplace=True)
+
+# Split features and target variable
+X = data.drop(columns=[target_column_name])
+y = data[target_column_name]
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize and fit the Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# 1. Feature Importance
+importance = rf_model.feature_importances_
+importance_df = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': importance
+}).sort_values(by='Importance', ascending=False)
+
+# 2. Permutation Importance
+perm_importance = permutation_importance(rf_model, X_test, y_test, n_repeats=10, random_state=42)
+perm_importance_df = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': perm_importance.importances_mean,
+    'Std Dev': perm_importance.importances_std
+}).sort_values(by='Importance', ascending=False)
+
+# Save results to a Word document
+doc = Document()
+doc.add_heading('Feature Importance and Permutation Importance', 0)
+
+# Feature Importance Table
+doc.add_heading('Feature Importance:', level=1)
+for index, row in importance_df.iterrows():
+    doc.add_paragraph(f"{row['Feature']}: {row['Importance']:.4f}")
+
+# Permutation Importance Table
+doc.add_heading('Permutation Importance:', level=1)
+for index, row in perm_importance_df.iterrows():
+    doc.add_paragraph(f"{row['Feature']}: {row['Importance']:.4f} (Std: {row['Std Dev']:.4f})")
+
+# Save the document
+doc_path = r'E:\Research\Ridership Prediction\Graphs\Updated\feature_permutation_importance_with_weekday.docx'
+doc.save(doc_path)
+
+print(f"Results saved to {doc_path}")
+
+# Plotting Feature Importance
+plt.figure(figsize=(10, 6))
+plt.barh(importance_df['Feature'], importance_df['Importance'], color='skyblue')
+plt.title('Feature Importance from Random Forest')
+plt.xlabel('Importance')
+plt.ylabel('Features')
+plt.gca().invert_yaxis()
+plt.show()
+
+# Plotting Permutation Importance
+plt.figure(figsize=(10, 6))
+plt.barh(perm_importance_df['Feature'], perm_importance_df['Importance'], color='lightgreen')
+plt.title('Permutation Importance of Features')
+plt.xlabel('Importance (Drop in Accuracy)')
+plt.ylabel('Features')
+plt.gca().invert_yaxis()
+plt.show()
