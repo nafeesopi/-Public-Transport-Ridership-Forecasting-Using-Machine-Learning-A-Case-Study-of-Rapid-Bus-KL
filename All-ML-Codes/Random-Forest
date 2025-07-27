@@ -1,0 +1,136 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+# Load your dataset with raw string notation to avoid unicodeescape error
+data = pd.read_csv(r'E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv')
+
+# Replace 'target_column_name' with your actual target variable name
+target_column_name = 'Bus_rkl_ridership'  # Replace with your actual target column name
+
+# Convert 'Date' column to datetime and drop it if not needed
+data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+data.drop(columns=['Date'], inplace=True)  # Drop the Date column
+
+# One-hot encoding for categorical features
+data = pd.get_dummies(data, drop_first=True)
+
+# Check for NaN values and handle them
+data.fillna(data.mean(), inplace=True)  # Simple imputation with mean (you can use other strategies)
+
+# Split features and target variable
+X = data.drop(columns=[target_column_name])
+y = data[target_column_name]
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize and fit the Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = rf_model.predict(X_test)
+
+# Calculate evaluation metrics
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100  # MAPE calculation
+
+# Print evaluation metrics
+print(f"Mean Absolute Error (MAE): {mae:.4f}")
+print(f"Mean Squared Error (MSE): {mse:.4f}")
+print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+print(f"Mean Absolute Percentage Error (MAPE): {mape:.4f}%")
+
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.linear_model import LinearRegression
+
+# Load your dataset with raw string notation to avoid unicodeescape error
+data = pd.read_csv(r'E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv')
+
+# Replace 'target_column_name' with your actual target variable name
+target_column_name = 'Bus_rkl_ridership'  # Replace with your actual target column name
+
+# Convert 'Date' column to datetime and drop it if not needed
+data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+data.drop(columns=['Date'], inplace=True)  # Drop the Date column
+
+# One-hot encoding for categorical features
+data = pd.get_dummies(data, drop_first=True)
+
+# Check for NaN values and handle them
+data.fillna(data.mean(), inplace=True)  # Simple imputation with mean (you can use other strategies)
+
+# Split features and target variable
+X = data.drop(columns=[target_column_name])
+y = data[target_column_name]
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize and fit the Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = rf_model.predict(X_test)
+
+# Calculate evaluation metrics
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100  # MAPE calculation
+r2 = r2_score(y_test, y_pred)  # R-squared calculation
+
+# Print evaluation metrics
+print(f"Mean Absolute Error (MAE): {mae:.4f}")
+print(f"Mean Squared Error (MSE): {mse:.4f}")
+print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+print(f"Mean Absolute Percentage Error (MAPE): {mape:.4f}%")
+print(f"R-squared (R²): {r2:.4f}")
+
+# Fit a linear regression model to visualize the linear fit line
+linear_model = LinearRegression()
+linear_model.fit(y_test.values.reshape(-1, 1), y_pred)
+
+# Generate points for the linear line
+y_test_sorted = np.sort(y_test)  # Keep y_test_sorted as a NumPy array
+y_pred_linear = linear_model.predict(y_test_sorted.reshape(-1, 1))  # Reshape without using .values
+
+# Plot actual vs predicted values
+plt.figure(figsize=(10, 6))
+plt.scatter(y_test, y_pred, color='orange', label='Predicted values', alpha=0.7)  # Predicted values in orange
+plt.scatter(y_test, y_test, color='blue', label='Actual values', alpha=0.6)  # Actual values in blue
+
+# Plot the ideal (perfect) line where actual equals predicted
+plt.plot(y_test_sorted, y_test_sorted, color='blue', linestyle='--', label='Perfect Fit Line')
+
+# Plot the linear regression fit line
+plt.plot(y_test_sorted, y_pred_linear, color='green', label='Linear Fit Line')
+
+# Add R-squared text to the plot (moved to bottom-right)
+plt.text(0.95, 0.05, f'R² = {r2:.4f}', transform=plt.gca().transAxes, fontsize=12,
+         verticalalignment='bottom', horizontalalignment='right', bbox=dict(facecolor='white', alpha=0.8))
+
+plt.xlabel('Actual Values')
+plt.ylabel('Predicted Values')
+plt.title('Actual vs Predicted Values with Linear Fit Line')
+plt.legend()
+plt.grid(True)
+
+# Save the figure
+plt.savefig(r'E:\Research\Ridership Prediction\Graphs\Updated\EDA\actual_vs_predicted_r2_v2.png')
+
+# Show the plot
+plt.show()
