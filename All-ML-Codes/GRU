@@ -1,0 +1,95 @@
+import numpy as np
+import pandas as pd
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import GRU, Dense, Dropout
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+# Load dataset
+csv_file_path = r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv"
+data_ridership = pd.read_csv(csv_file_path)
+
+# Convert 'Date' to datetime format
+data_ridership['Date'] = pd.to_datetime(data_ridership['Date'], format='%m/%d/%Y')
+
+# Feature selection
+features = ['Temp_max', 'Temp_min', 'Humidity', 'Precipitation', 'Wind_speed', 
+            'Weekday_Weekend', 'Festival', 'ridership_rolling_7', 'ridership_diff_7', 
+            'ridership_seasonal_lag_30']  # Updated feature list
+
+target = 'Bus_rkl_ridership'
+
+# Normalize the features
+scaler = MinMaxScaler(feature_range=(0, 1))
+data_ridership[features] = scaler.fit_transform(data_ridership[features])
+
+# Train-test split (2022 and 2023 as training, 2024 as test)
+train_data = data_ridership[data_ridership['Date'] < '2024-01-01']
+test_data = data_ridership[data_ridership['Date'] >= '2024-01-01']
+
+X_train = train_data[features]
+y_train = train_data[target]
+X_test = test_data[features]
+y_test = test_data[target]
+
+# Reshape data for GRU (samples, timesteps, features)
+X_train_gru = np.reshape(X_train.values, (X_train.shape[0], 1, X_train.shape[1]))
+X_test_gru = np.reshape(X_test.values, (X_test.shape[0], 1, X_test.shape[1]))
+
+# Define GRU model
+model = Sequential()
+model.add(GRU(units=128, return_sequences=True, input_shape=(X_train_gru.shape[1], X_train_gru.shape[2])))
+model.add(Dropout(0.4))
+model.add(GRU(units=128))
+model.add(Dropout(0.4))
+model.add(Dense(1))
+
+# Compile model
+optimizer = Adam(learning_rate=0.0001)
+model.compile(optimizer=optimizer, loss='mean_squared_error')
+
+# Set up early stopping and learning rate reduction
+early_stopping = EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, min_lr=0.00001)
+
+# Train the GRU model
+model.fit(X_train_gru, y_train, epochs=100, batch_size=64, callbacks=[early_stopping, reduce_lr])
+
+# Predict on test set
+y_pred_gru = model.predict(X_test_gru).flatten()
+
+# Evaluate the GRU model performance
+mae_gru = mean_absolute_error(y_test, y_pred_gru)
+mse_gru = mean_squared_error(y_test, y_pred_gru)
+rmse_gru = np.sqrt(mse_gru)
+mape_gru = np.mean(np.abs((y_test - y_pred_gru) / y_test)) * 100
+
+# Print the evaluation metrics
+print(f"Mean Absolute Error (MAE): {mae_gru:.4f}")
+print(f"Mean Squared Error (MSE): {mse_gru:.4f}")
+print(f"Root Mean Squared Error (RMSE): {rmse_gru:.4f}")
+print(f"Mean Absolute Percentage Error (MAPE): {mape_gru:.4f}%")
+
+# Calculate prediction percentage
+prediction_percentage = (1 - np.abs(y_test - y_pred_gru) / y_test) * 100
+
+# Save the prediction results to a CSV file
+results = pd.DataFrame({
+    'Date': test_data['Date'],
+    'Actual': y_test,
+    'Predicted': y_pred_gru,
+    'Prediction_Percentage': prediction_percentage
+})
+
+# Add the evaluation metrics to the file as additional rows (optional)
+results.loc[len(results)] = ['Metrics:', None, None, None]
+results.loc[len(results)] = ['Mean Absolute Error (MAE)', mae_gru, None, None]
+results.loc[len(results)] = ['Mean Squared Error (MSE)', mse_gru, None, None]
+results.loc[len(results)] = ['Root Mean Squared Error (RMSE)', rmse_gru, None, None]
+results.loc[len(results)] = ['Mean Absolute Percentage Error (MAPE)', mape_gru, None, None]
+
+output_path = r"E:/Research/Ridership Prediction/Graphs/Updated/GRU_Prediction_Results.csv" 
+results.to_csv(output_path, index=False)
+print(f"Prediction results saved to {output_path}")
