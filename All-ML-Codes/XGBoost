@@ -1,0 +1,100 @@
+import pandas as pd
+from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.impute import SimpleImputer
+import xgboost as xgb
+import numpy as np
+
+# Load dataset from the specified path
+csv_file_path = r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv"
+
+# Set the desired output path for the results CSV file
+output_file_path = r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Results_XGBoost.csv"
+
+# Load the dataset
+data_ridership = pd.read_csv(csv_file_path)
+
+# Convert 'Date' to datetime format based on the correct format in the dataset
+data_ridership['Date'] = pd.to_datetime(data_ridership['Date'], format='%m/%d/%Y')
+
+# Feature selection: choose relevant features for modeling
+features = ['Temp_max', 'Temp_min', 'Humidity', 'Precipitation', 'Wind_speed', 
+            'Weekday_Weekend', 'Festival', 'ridership_rolling_7', 
+            'ridership_diff_7', 'ridership_seasonal_lag_30']  # Updated features
+
+# Train-test split:
+# Train on data before 2024, Test on data from 2024 onwards
+train_data = data_ridership[(data_ridership['Date'] < '2024-01-01')]
+test_data = data_ridership[(data_ridership['Date'] >= '2024-01-01')]
+
+X_train = train_data[features]
+y_train = train_data['Bus_rkl_ridership']
+X_test = test_data[features]
+y_test = test_data['Bus_rkl_ridership']
+
+# Handle NaN values in the dataset using SimpleImputer (mean imputation)
+imputer = SimpleImputer(strategy='mean')
+X_train = imputer.fit_transform(X_train)
+X_test = imputer.transform(X_test)
+
+# Initialize TimeSeriesSplit for cross-validation
+tscv = TimeSeriesSplit(n_splits=5)
+
+# Define the parameter grid for XGBoost
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'learning_rate': [0.01, 0.1, 0.2],
+    'max_depth': [3, 5, 7],
+    'subsample': [0.7, 0.8, 0.9]
+}
+
+# Initialize RandomizedSearchCV for XGBoost
+random_search = RandomizedSearchCV(estimator=xgb.XGBRegressor(random_state=42), param_distributions=param_grid, cv=tscv, n_jobs=-1, n_iter=50, verbose=2)
+
+# Fit the model
+random_search.fit(X_train, y_train)
+
+# Best parameters and model
+print(f"Best parameters: {random_search.best_params_}")
+best_xgb_model = random_search.best_estimator_
+
+# Predict on the test set
+y_pred_best_xgb = best_xgb_model.predict(X_test)
+
+# Calculate evaluation metrics
+mae = mean_absolute_error(y_test, y_pred_best_xgb)
+mse = mean_squared_error(y_test, y_pred_best_xgb)
+rmse = np.sqrt(mse)
+mape = np.mean(np.abs((y_test - y_pred_best_xgb) / y_test)) * 100  # MAPE calculation
+
+# Print evaluation metrics
+print(f"Mean Absolute Error (MAE): {mae:.4f}")
+print(f"Mean Squared Error (MSE): {mse:.4f}")
+print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+print(f"Mean Absolute Percentage Error (MAPE): {mape:.4f}%")
+
+# Calculate prediction accuracy percentage
+prediction_percentage = (1 - np.abs(y_test - y_pred_best_xgb) / y_test) * 100
+
+# Create a DataFrame to store actual vs predicted values, prediction percentage, and evaluation metrics
+results_df = pd.DataFrame({
+    'Date': test_data['Date'],
+    'Actual': y_test,
+    'Predicted': y_pred_best_xgb,
+    'Prediction_Percentage': prediction_percentage
+})
+
+# Add the evaluation metrics to the DataFrame for the output CSV file
+metrics_df = pd.DataFrame({
+    'Metric': ['MAE', 'MSE', 'RMSE', 'MAPE'],
+    'Value': [mae, mse, rmse, mape]
+})
+
+# Save the prediction results and metrics to a CSV file
+output_forecast_path = output_file_path.replace('.csv', '_with_metrics.csv')
+results_df.to_csv(output_forecast_path, index=False)
+
+# Also, save the metrics separately
+metrics_df.to_csv(output_forecast_path.replace('.csv', '_metrics.csv'), index=False)
+
+print(f"Prediction results saved to {output_forecast_path}")
