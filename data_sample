@@ -1,1 +1,6 @@
-
+Date	Day_Friday	Day_Monday	Day_Saturday	Day_Sunday	Day_Thursday	Day_Tuesday	Day_Wednesday	Festival	Temp_max	Temp_min	Temp_avg	Humidity	Precipitation	Wind_speed	Wind_gust	Solar_radiation	Solar_energy	Uv_index	Conditions	Bus_rkl_ridership	month	quarter	Weekday_Weekend	Festival	ridership_rolling_7	ridership_diff_7	ridership_seasonal_lag_30
+1/31/2022	0	1	0	0	0	0	0	0	33.7	25.6	27.8	80.1	4.42	15.7	7.2	259.5	22.3	9	1	98153	1	1	0	1	110958.2857	-29054	84122
+2/1/2022	0	0	0	0	0	1	0	1	33	24.8	27.8	79.3	0.884	14.3	8.3	230.3	19.9	8	1	81030	2	1	0	0	104020.7143	-48563	77263
+2/2/2022	0	0	0	0	0	0	1	1	33.9	24.8	27.4	79.5	16.797	17.1	14	268.8	23.2	9	1	77435	2	1	0	0	96367.71429	-53571	114263
+2/3/2022	0	0	0	0	1	0	0	0	33.8	24.1	27.9	76.6	0.093	17.1	9.4	251	21.6	8	1	89517	2	1	0	1	90937.71429	-38010	113677
+2/4/2022	1	0	0	0	0	0	0	0	34.1	24	27.9	76.2	19.449	15.7	15.1	277.2	23.7	10	1	97558	2	1	0	1	86989.85714	-27635	116090
