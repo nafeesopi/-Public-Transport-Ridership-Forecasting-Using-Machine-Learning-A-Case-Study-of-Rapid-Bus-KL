@@ -1,0 +1,92 @@
+import os  # Ensure the os module is imported
+import subprocess
+import sys
+
+# Function to install a package if it's not already installed
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Check if necessary libraries are installed, and install if missing
+try:
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+except ImportError:
+    install('pandas')
+    install('seaborn')
+    install('matplotlib')
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+# Set file paths
+csv_file_path = r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv" 
+output_graph_path = r"E:\Research\Ridership Prediction\Graphs\Updated"
+
+# Ensure output directory exists
+if not os.path.exists(output_graph_path):
+    os.makedirs(output_graph_path)
+
+# Check if the CSV file exists
+if not os.path.exists(csv_file_path):
+    print(f"CSV file not found at path: {csv_file_path}")
+else:
+    # Load the dataset
+    data_ridership = pd.read_csv(csv_file_path)
+
+    # Convert 'Date' to datetime format
+    data_ridership['Date'] = pd.to_datetime(data_ridership['Date'], format='%m/%d/%Y')
+
+    # 1. Updated Correlation Matrix
+    correlation_columns = ['Bus_rkl_ridership', 'Temp_max', 'Temp_min', 'Temp_avg', 'Humidity', 
+                           'Precipitation', 'Wind_speed', 'Wind_gust', 'Solar_radiation', 
+                           'Solar_energy', 'Uv_index', 'Weekday_Weekend', 'Festival', 
+                           'ridership_rolling_7', 'ridership_diff_7', 
+                           'ridership_seasonal_lag_30']
+    
+    correlation_matrix = data_ridership[correlation_columns].corr()
+
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+    plt.title("Correlation Matrix: Ridership, Weather, and Lag/Seasonal Factors")
+    plt.savefig(os.path.join(output_graph_path, 'updated_correlation_matrix.png'))
+    plt.close()
+
+    # 2. Ridership Trend Over Time
+    plt.figure(figsize=(12, 6))
+    plt.plot(data_ridership['Date'], data_ridership['Bus_rkl_ridership'], label='Ridership')
+    plt.title('Ridership Trend Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('Ridership')
+    plt.legend()
+    plt.savefig(os.path.join(output_graph_path, 'ridership_trend.png'))
+    plt.close()
+
+    # 3. Weekday vs Weekend Ridership
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x='Weekday_Weekend', y='Bus_rkl_ridership', data=data_ridership)
+    plt.title('Ridership: Weekday vs Weekend')
+    plt.xlabel('0 = Weekday, 1 = Weekend')
+    plt.ylabel('Ridership')
+    plt.savefig(os.path.join(output_graph_path, 'weekday_vs_weekend.png'))
+    plt.close()
+
+    # 4. Festival vs Non-Festival Ridership
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x='Festival', y='Bus_rkl_ridership', data=data_ridership)
+    plt.title('Ridership: Festival vs Non-Festival Days')
+    plt.xlabel('0 = Non-Festival, 1 = Festival')
+    plt.ylabel('Ridership')
+    plt.savefig(os.path.join(output_graph_path, 'festival_vs_nonfestival.png'))
+    plt.close()
+
+    # 5. Ridership vs Maximum Temperature
+    plt.figure(figsize=(8, 6))
+    plt.scatter(data_ridership['Temp_max'], data_ridership['Bus_rkl_ridership'], alpha=0.5)
+    plt.title('Ridership vs Maximum Temperature')
+    plt.xlabel('Maximum Temperature (°C)')
+    plt.ylabel('Ridership')
+    plt.savefig(os.path.join(output_graph_path, 'ridership_vs_temperature.png'))
+    plt.close()
+
+    print(f"All graphs saved to {output_graph_path}")
