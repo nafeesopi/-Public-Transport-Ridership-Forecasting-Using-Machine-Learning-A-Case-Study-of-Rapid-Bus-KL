@@ -1,0 +1,103 @@
+import os
+import pandas as pd
+import subprocess
+import sys
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import numpy as np
+
+# Function to install a package if it's not already installed
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Check for necessary packages and install if missing
+try:
+    from pmdarima import auto_arima
+    from sklearn.preprocessing import MinMaxScaler
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+except ImportError:
+    install('pmdarima')
+    install('scikit-learn')
+    install('pandas')
+    install('seaborn')
+    install('matplotlib')
+    from pmdarima import auto_arima
+    from sklearn.preprocessing import MinMaxScaler
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+# Set file paths
+csv_file_path = r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv" 
+output_graph_path = r"E:\Research\Ridership Prediction\Graphs\Updated"
+
+# Ensure output directory exists
+if not os.path.exists(output_graph_path):
+    os.makedirs(output_graph_path)
+
+# Check if the CSV file exists
+if not os.path.exists(csv_file_path):
+    print(f"CSV file not found at path: {csv_file_path}")
+else:
+    # Load the dataset
+    data_ridership = pd.read_csv(csv_file_path)
+
+    # Convert 'Date' to datetime format
+    data_ridership['Date'] = pd.to_datetime(data_ridership['Date'], format='%m/%d/%Y')
+
+    # Select the ridership series for ARIMA
+    ridership_series = data_ridership['Bus_rkl_ridership']
+
+    # Normalize the ridership data
+    scaler = MinMaxScaler()
+    ridership_scaled = scaler.fit_transform(ridership_series.values.reshape(-1, 1)).flatten()
+
+    # Step 1: Use auto_arima to find the best model
+    print("Running auto_arima to find the best ARIMA model...")
+    model = auto_arima(ridership_scaled, seasonal=False, stepwise=True, suppress_warnings=True)
+
+    # Display the chosen model order
+    print(f"Best ARIMA order: {model.order}")
+
+    # Step 2: Fit the best ARIMA model
+    model_fit = model.fit(ridership_scaled)
+
+    # Summary of the fitted model
+    print(model_fit.summary())
+
+    # Step 3: Forecast future values
+    forecast_values_scaled = model_fit.predict(n_periods=20)
+
+    # Step 4: Convert the forecast back to the original scale
+    forecast_values = scaler.inverse_transform(forecast_values_scaled.reshape(-1, 1)).flatten()
+
+    # Step 5: Calculate metrics (MAE, MSE, RMSE, MAPE)
+    actual_ridership = ridership_series[-20:].values
+
+    mae = mean_absolute_error(actual_ridership, forecast_values)
+    mse = mean_squared_error(actual_ridership, forecast_values)
+    rmse = np.sqrt(mse)
+    mape = np.mean(np.abs((actual_ridership - forecast_values) / actual_ridership)) * 100
+
+    print(f"Mean Absolute Error (MAE): {mae}")
+    print(f"Mean Squared Error (MSE): {mse}")
+    print(f"Root Mean Squared Error (RMSE): {rmse}")
+    print(f"Mean Absolute Percentage Error (MAPE): {mape}%")
+
+    # Step 6: Calculate prediction percentage
+    prediction_percentage = (1 - abs(actual_ridership - forecast_values) / actual_ridership) * 100
+
+    # Step 7: Save the forecasted values with actual ridership and prediction percentage
+    future_dates = pd.date_range(start=data_ridership['Date'].max(), periods=21, freq='D')[1:]
+    forecast_df = pd.DataFrame({
+        'Date': future_dates, 
+        'Actual': actual_ridership, 
+        'Predicted': forecast_values,
+        'Prediction_Percentage': prediction_percentage
+    })
+
+    output_forecast_path = os.path.join(output_graph_path, 'arima_forecast_auto_with_metrics.csv')
+    forecast_df.to_csv(output_forecast_path, index=False)
+
+    print(f"ARIMA forecast results saved to {output_forecast_path}")
