@@ -1,0 +1,62 @@
+# Import necessary libraries for modeling
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import numpy as np
+import pandas as pd
+
+# Load the dataset
+data_ridership = pd.read_csv(r"E:\Research\Ridership Prediction\Graphs\Updated\Ridership_Prediction_Modified.csv")
+
+# Convert 'Date' to datetime format
+data_ridership['Date'] = pd.to_datetime(data_ridership['Date'], format='%m/%d/%Y')
+
+# Filter the dataset to split before 2024 for training and 2024 onwards for testing
+train_data = data_ridership[data_ridership['Date'] < '2024-01-01']
+test_data = data_ridership[data_ridership['Date'] >= '2024-01-01']
+
+# Select features for the regression model (updated columns)
+features = ['Temp_max', 'Temp_min', 'Temp_avg', 'Humidity', 'Precipitation', 
+            'Wind_speed', 'Wind_gust', 'Solar_radiation', 'Solar_energy', 
+            'Uv_index', 'Weekday_Weekend', 'Festival', 
+            'ridership_rolling_7', 'ridership_diff_7', 
+            'ridership_seasonal_lag_30']
+
+X_train = train_data[features]
+y_train = train_data['Bus_rkl_ridership']
+
+X_test = test_data[features]
+y_test = test_data['Bus_rkl_ridership']
+
+# Instantiate and train the model
+lin_reg_model = LinearRegression()
+lin_reg_model.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = lin_reg_model.predict(X_test)
+
+# Evaluate the model performance
+mse = mean_squared_error(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+
+# Print the results
+print(f"Mean Absolute Error (MAE): {mae}")
+print(f"Mean Squared Error (MSE): {mse}")
+print(f"Root Mean Squared Error (RMSE): {rmse}")
+print(f"Mean Absolute Percentage Error (MAPE): {mape}%")
+
+# Calculate the prediction percentage
+prediction_percentage = (1 - abs(y_test - y_pred) / y_test) * 100
+
+# Save the prediction results
+output_predictions_path = r"E:\Research\Ridership Prediction\Graphs\Updated\linear_regression_predictions.csv"
+prediction_df = pd.DataFrame({'Date': test_data['Date'], 
+                              'Actual': y_test, 
+                              'Predicted': y_pred, 
+                              'Prediction_Percentage': prediction_percentage})
+
+prediction_df.to_csv(output_predictions_path, index=False)
+
+print(f"Linear Regression results saved to {output_predictions_path}")
